@@ -32,7 +32,7 @@ export default async function handler(req, res) {
           'Authorization': 'Bearer ' + GROQ_KEY
         },
         body: JSON.stringify({
-          model: model || 'llama-3.1-8b-instant',
+          model: model || 'llama-3.3-70b-versatile',
           messages: [{ role: 'system', content: system }, ...msgs],
           max_tokens: 1024,
           temperature: 0.88
