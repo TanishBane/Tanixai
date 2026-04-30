@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TanixAI — By Tanish Bane</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;0,700;1,300;1,400&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&family=Manrope:wght@400;500;600;700;800&family=Roboto:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ══ AMBIENT BACKGROUND ══ -->
+<div id="ambient-mesh"></div>
+<div id="film-grain"></div>
+<div id="vignette"></div>
+
+<!-- ══ CINEMATIC INTRO ══ -->
+<div id="intro-overlay">
+  <div id="intro-letterbox-top"></div>
+  <div id="intro-letterbox-bottom"></div>
+  <div id="intro-logo">TX</div>
+  <div id="intro-sub">TANIXAI</div>
+</div>
+
+<!-- ══ TOAST RACK ══ -->
+<div id="toast-rack"></div>
+
+<!-- ══ SEARCH BAR ══ -->
+<div id="search-bar">
+  <svg id="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+  <input id="search-input" type="text" placeholder="Search…" oninput="onSearchInput()" onkeydown="onSearchKey(event)" autocomplete="off" spellcheck="false">
+  <span id="search-count"></span>
+  <div class="search-nav">
+    <button id="search-prev" onclick="searchStep(-1)" title="Previous">
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+    </button>
+    <button id="search-next" onclick="searchStep(1)" title="Next">
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+    </button>
+  </div>
+  <button id="search-close" onclick="closeSearch()" title="Close">✕</button>
+</div>
+
+<!-- ══ TOP BAR ══ -->
+<header id="topbar">
+  <div class="tb-left">
+    <div class="tb-logo" onclick="newChat()">
+      <span class="tb-logo-gem">TX</span>
+      <span class="tb-logo-name">TanixAI</span>
+    </div>
+    <div class="tb-divider"></div>
+    <span id="providerBadge" class="tb-badge" style="display:none"></span>
+  </div>
+  <div class="tb-right">
+    <div class="tb-mode-pill" id="modePill">
+      <span id="modeLabel">Portfolio Mode</span>
+      <button onclick="clearMode()" title="Exit">✕</button>
+    </div>
+    <div class="tb-model" id="modelSwitcher">
+      <div class="tb-model-btn" id="modelBadge" onclick="toggleModelDropdown(event)">
+        <span id="modelName">Tanix Fast</span>
+        <svg class="chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+      <div class="tb-model-dd" id="modelDropdown"></div>
+    </div>
+    <div class="tb-status">
+      <span class="status-dot"></span>
+      <span class="status-label">Online</span>
+    </div>
+    <div class="tb-lang">
+      <button class="tb-lang-btn on" id="lEN" onclick="setLang('en')">EN</button>
+      <button class="tb-lang-btn" id="lHI" onclick="setLang('hi')">HI</button>
+    </div>
+    <button class="tb-btn" onclick="exportChat()">Export</button>
+    <button class="tb-btn tb-btn-danger" onclick="clearChat()">Clear</button>
+  </div>
+</header>
+
+<!-- ══ CHAT ══ -->
+<main id="chat-wrap">
+  <div id="chat"></div>
+</main>
+
+<!-- ══ WELCOME OVERLAY ══ -->
+<div id="welcome-overlay">
+  <div id="welcome-card">
+    <div class="wc-logo">TX</div>
+    <h1 class="wc-title">Tanix<span>AI</span></h1>
+    <p class="wc-subtitle">crafted by tanish bane · mumbai</p>
+    <p class="wc-desc">Your personal AI platform. Generate images, analyse files, switch modes — or just have a real conversation.</p>
+    <button class="wc-start" onclick="enterApp()">Get Started</button>
+    <div class="wc-chips">
+      <span class="wc-chip" onclick="quickStart(this)">Who is Tanish Bane?</span>
+      <span class="wc-chip" onclick="quickStart(this)">What can you do?</span>
+      <span class="wc-chip" onclick="quickStart(this)">Explain machine learning simply</span>
+      <span class="wc-chip" onclick="quickStart(this)">Help me with HSC exam prep</span>
+    </div>
+  </div>
+</div>
+
+<!-- ══ LEFT SIDEBAR ══ -->
+<div class="bl-sidebar" id="left-dock">
+  <button class="bl-btn" onclick="newChat()">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    <span>New</span>
+  </button>
+  <button class="bl-btn" onclick="toggleMenuPanel()">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    <span>Menu</span>
+  </button>
+  <button class="bl-btn" onclick="toggleHistPanel()">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+    <span>Hist</span>
+  </button>
+</div>
+
+<!-- ══ HISTORY DRAWER ══ -->
+<div id="drawer-overlay" onclick="closeAllDrawers()"></div>
+
+<div class="side-drawer" id="histDrawer">
+  <div class="drawer-head">
+    <span class="drawer-title">Chats</span>
+    <div class="drawer-actions">
+      <button class="drawer-action-btn" onclick="deleteAllChats()" title="Delete all">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+      </button>
+      <button class="drawer-close" onclick="toggleHistPanel(false)">✕</button>
+    </div>
+  </div>
+  <div class="drawer-search">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input id="histSearchInput" type="text" placeholder="Search chats…" oninput="onHistSearch(this.value)" autocomplete="off">
+  </div>
+  <div class="drawer-body" id="histPanel"><div class="drawer-empty">No saved chats yet.</div></div>
+</div>
+
+<!-- ══ MENU DRAWER ══ -->
+<div class="side-drawer" id="menuDrawer">
+  <div class="drawer-head">
+    <div class="drawer-brand">
+      <span class="drawer-brand-gem">TX</span>
+      <span class="drawer-brand-name">TanixAI</span>
+    </div>
+    <button class="drawer-close" onclick="toggleMenuPanel(false)">✕</button>
+  </div>
+  <div class="drawer-tabs">
+    <button class="drawer-tab on" id="tabUpdates" onclick="switchMenuTab('updates')">Updates</button>
+    <button class="drawer-tab" id="tabPersonal" onclick="switchMenuTab('personal')">Themes</button>
+  </div>
+  <div class="drawer-body" id="menuUpdates"></div>
+  <div class="drawer-body hidden" id="menuPersonal"></div>
+</div>
+
+<!-- ══ MEDIA PREVIEW ══ -->
+<div id="mediaBar">
+  <img id="prevThumb" src="" alt="" style="display:none">
+  <div class="media-info">
+    <span class="media-name" id="prevName"></span>
+    <span class="media-type" id="prevType"></span>
+  </div>
+  <button class="media-remove" onclick="removeMedia()">✕</button>
+</div>
+
+<!-- ══ INPUT AREA ══ -->
+<footer id="input-footer" class="hidden">
+  <div id="input-box">
+    <div id="input-row">
+      <button id="uploadBtn" class="ibtn" title="Upload file" onclick="document.getElementById('mediaFile').click()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+        </svg>
+      </button>
+      <input type="file" id="mediaFile" accept="image/*,application/pdf,text/plain,text/csv,.csv,.txt,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" class="hidden" onchange="onMedia(event)">
+      <textarea id="txt" placeholder="Ask TanixAI anything…" rows="1" onkeydown="onKey(event)" oninput="onInput(this)" autocomplete="off"></textarea>
+      <div class="ibtn-group">
+        <button id="micBtn" class="ibtn" title="Voice input" onclick="toggleVoice()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+            <line x1="12" y1="19" x2="12" y2="23"/>
+            <line x1="8" y1="23" x2="16" y2="23"/>
+          </svg>
+        </button>
+        <button id="sbtn" class="send-btn" onclick="send()" title="Send">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="22" y1="2" x2="11" y2="13"/>
+            <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+    <div id="input-foot">
+      <div class="input-meta">
+        <span id="cc">0 / 2000</span>
+        <span id="coolHint" class="hint">Enter send · Shift+Enter new line · Ctrl+F search</span>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<!-- ══ SCROLL TO BOTTOM ══ -->
+<button id="scroll-btn" onclick="scrollToBottom()" title="Scroll to bottom">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+</button>
+
+<script src="app.js"></script>
+</body>
+</html>
