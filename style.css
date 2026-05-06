@@ -1664,3 +1664,53 @@ mark.search-hl.active {
   #chat { padding: 16px 12px; }
   #input-footer { padding: 10px 12px 14px; }
 }
+
+/* ══ AI DISCLAIMER ══ */
+.ai-disclaimer {
+  display: block;
+  text-align: center;
+  font-size: 11px;
+  color: var(--txt-muted);
+  font-family: var(--fb);
+  font-weight: 400;
+  letter-spacing: 0.01em;
+  line-height: 1.5;
+  opacity: 0.72;
+  padding: 7px 0 0;
+  margin: 0;
+  user-select: none;
+  pointer-events: none;
+}
+
+/* ══ PIN BUTTON IN HISTORY ══ */
+.hist-pin {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--txt-muted);
+  font-size: 11px;
+  padding: 2px 4px;
+  border-radius: 4px;
+  transition: color .2s, transform .2s;
+  flex-shrink: 0;
+  line-height: 1;
+}
+.hist-pin:hover { color: var(--accent); transform: scale(1.2); }
+.hist-pin.pinned { color: var(--accent); }
+.hist-item.pinned-chat { border-left: 2px solid var(--accent); background: var(--accent-d); }
+.hist-pinned-label {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--accent);
+  opacity: 0.7;
+  padding: 6px 14px 2px;
+  font-family: var(--fb);
+}
+
+/* ══ DELETE SINGLE MESSAGE ══ */
+.act-btn.del-msg-btn { color: var(--danger); opacity: 0.6; }
+.act-btn.del-msg-btn:hover { opacity: 1; }
+
+/* ══ NEW THEMES ══ */
+/* (handled via JS CSS vars, no extra rules needed) */

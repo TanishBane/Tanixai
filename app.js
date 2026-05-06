@@ -256,15 +256,34 @@ function loadHistoryList(){
     panel.innerHTML='<div class="drawer-empty">No saved chats yet.</div>';
     return;
   }
-  panel.innerHTML = keys.map(k=>{
-    const d = JSON.parse(localStorage.getItem(k)||'{}');
+  const chats = keys.map(k=>JSON.parse(localStorage.getItem(k)||'{}')).filter(d=>d.id);
+  const pinned = chats.filter(d=>d.pinned);
+  const unpinned = chats.filter(d=>!d.pinned);
+  const renderItem = d => {
     const date = new Date(d.ts||0).toLocaleDateString('en-IN',{day:'numeric',month:'short'});
-    return `<div class="hist-item ${d.id===currentChatId?'active':''}" onclick="loadChat('${d.id}')">
+    const pinIcon = d.pinned
+      ? `<svg width="10" height="10" viewBox="0 0 24 24" fill="var(--accent)" stroke="var(--accent)" stroke-width="2"><path d="M12 2l3 7h6l-5 4 2 7-6-4-6 4 2-7-5-4h6z"/></svg>`
+      : `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3 7h6l-5 4 2 7-6-4-6 4 2-7-5-4h6z"/></svg>`;
+    return `<div class="hist-item ${d.id===currentChatId?'active':''} ${d.pinned?'pinned-chat':''}" onclick="loadChat('${d.id}')">
       <span class="hist-title">${d.title||'Chat'}</span>
       <span class="hist-meta">${date}</span>
+      <button class="hist-pin ${d.pinned?'pinned':''}" onclick="event.stopPropagation();pinChat('${d.id}')" title="${d.pinned?'Unpin':'Pin'}">${pinIcon}</button>
       <button class="hist-del" onclick="event.stopPropagation();deleteChat('${d.id}')" title="Delete">✕</button>
     </div>`;
-  }).join('');
+  };
+  let html = '';
+  if(pinned.length) html += `<div class="hist-pinned-label">📌 Pinned</div>` + pinned.map(renderItem).join('');
+  if(unpinned.length) { if(pinned.length) html += `<div class="hist-pinned-label">Recent</div>`; html += unpinned.map(renderItem).join(''); }
+  panel.innerHTML = html;
+}
+
+function pinChat(id){
+  const raw = localStorage.getItem(id); if(!raw) return;
+  const data = JSON.parse(raw);
+  data.pinned = !data.pinned;
+  localStorage.setItem(id, JSON.stringify(data));
+  loadHistoryList();
+  showToast(data.pinned ? 'Chat pinned' : 'Chat unpinned', 'success', 1800);
 }
 
 function loadChat(id){
@@ -909,11 +928,35 @@ function addBubble(role,text,imgSrc,pdfName,genImgPrompt,skipTypewriter,textFile
     const ed=document.createElement('button'); ed.className='act-btn edit-msg-btn'; ed.textContent='Edit';
     ed.onclick=()=>editMessage(wrap, text);
     acts.appendChild(ed);
+    const dl=document.createElement('button'); dl.className='act-btn del-msg-btn'; dl.textContent='Delete';
+    dl.onclick=()=>{
+      const allMsgs=Array.from(document.querySelectorAll('#chat .msg'));
+      const idx=allMsgs.indexOf(wrap);
+      if(idx<0)return;
+      // Remove this message and the AI reply after it (if exists)
+      const toRemove=[wrap];
+      if(allMsgs[idx+1]&&allMsgs[idx+1].classList.contains('ai')) toRemove.push(allMsgs[idx+1]);
+      toRemove.forEach(m=>m.remove());
+      history=history.filter((_,i)=>i!==idx&&i!==idx+1);
+      saveChatToHistory();
+      showToast('Message deleted','warn',2000);
+    };
+    acts.appendChild(dl);
   }
   if(!isUser){
     const rg=document.createElement('button'); rg.className='act-btn regen-btn'; rg.textContent='Regenerate';
     rg.onclick=()=>regenerate(wrap,text);
     acts.appendChild(rg);
+    const dl=document.createElement('button'); dl.className='act-btn del-msg-btn'; dl.textContent='Delete';
+    dl.onclick=()=>{
+      const allMsgs=Array.from(document.querySelectorAll('#chat .msg'));
+      const idx=allMsgs.indexOf(wrap);
+      wrap.remove();
+      if(idx>=0) history=history.filter((_,i)=>i!==idx);
+      saveChatToHistory();
+      showToast('Message deleted','warn',2000);
+    };
+    acts.appendChild(dl);
   }
 
   const ts=document.createElement('div'); ts.className='msg-time';
@@ -1044,6 +1087,41 @@ const COLOR_THEMES = {
     userBg: 'rgba(232,212,73,0.06)', userBorder: 'rgba(232,212,73,0.18)',
     bg: 'linear-gradient(135deg, #0f0f02 0%, #1e1a01 50%, #100f01 100%)',
   },
+  rose: {
+    label: 'Rose', emoji: '', video: false,
+    swatchGradient: 'linear-gradient(135deg, #880e4f, #e91e8c, #f48fb1)',
+    accent: '#f06292', accentD: 'rgba(240,98,146,0.12)', accentG: 'rgba(240,98,146,0.25)', accentB: '#f8a5c4',
+    userBg: 'rgba(240,98,146,0.06)', userBorder: 'rgba(240,98,146,0.22)',
+    bg: 'linear-gradient(135deg, #0f0208 0%, #220512 50%, #150309 100%)',
+  },
+  teal: {
+    label: 'Teal', emoji: '', video: false,
+    swatchGradient: 'linear-gradient(135deg, #004d40, #00bfa5, #64ffda)',
+    accent: '#1de9b6', accentD: 'rgba(29,233,182,0.12)', accentG: 'rgba(29,233,182,0.25)', accentB: '#6effd9',
+    userBg: 'rgba(29,233,182,0.06)', userBorder: 'rgba(29,233,182,0.18)',
+    bg: 'linear-gradient(135deg, #020f0c 0%, #041e18 50%, #030f0d 100%)',
+  },
+  neon: {
+    label: 'Neon', emoji: '', video: false,
+    swatchGradient: 'linear-gradient(135deg, #0d0d0d, #39ff14, #00f5ff)',
+    accent: '#39ff14', accentD: 'rgba(57,255,20,0.12)', accentG: 'rgba(57,255,20,0.22)', accentB: '#80ff55',
+    userBg: 'rgba(57,255,20,0.05)', userBorder: 'rgba(57,255,20,0.20)',
+    bg: 'linear-gradient(135deg, #010801 0%, #001a00 50%, #010a01 100%)',
+  },
+  sunset: {
+    label: 'Sunset', emoji: '', video: false,
+    swatchGradient: 'linear-gradient(135deg, #b71c1c, #ff6f00, #ffd600)',
+    accent: '#ff7043', accentD: 'rgba(255,112,67,0.12)', accentG: 'rgba(255,112,67,0.25)', accentB: '#ff9e80',
+    userBg: 'rgba(255,112,67,0.06)', userBorder: 'rgba(255,112,67,0.20)',
+    bg: 'linear-gradient(135deg, #100402 0%, #1f0a00 50%, #140600 100%)',
+  },
+  ice: {
+    label: 'Ice', emoji: '', video: false,
+    swatchGradient: 'linear-gradient(135deg, #b3e5fc, #e0f7fa, #f8fbff)',
+    accent: '#81d4fa', accentD: 'rgba(129,212,250,0.12)', accentG: 'rgba(129,212,250,0.22)', accentB: '#b3e5fc',
+    userBg: 'rgba(129,212,250,0.06)', userBorder: 'rgba(129,212,250,0.18)',
+    bg: 'linear-gradient(135deg, #02080f 0%, #041528 50%, #020b1a 100%)',
+  },
 };
 let currentTheme = localStorage.getItem('tanix_theme') || 'default';
 
@@ -1087,9 +1165,21 @@ function applyTheme(key) {
    ═══════════════════════════════════════════ */
 const UPDATES = [
   {
+    version: 'v0.4', title: 'Power User Update',
+    date: 'May 6, 2026', time: '12:00 PM IST',
+    current: true,
+    items: [
+      'AI disclaimer added below the chat input',
+      'Pin chats to the top of your history',
+      'Delete any single message from a conversation',
+      '5 new themes — Rose, Teal, Neon, Sunset, Ice',
+      'History shows pinned section separately',
+    ]
+  },
+  {
     version: 'v0.3', title: 'Cinematic Redesign',
     date: 'April 30, 2026', time: '10:00 PM IST',
-    current: true,
+    current: false,
     items: [
       'Complete UI overhaul — cinematic & immersive design',
       'Custom cursor with ambient glow tracking',
