@@ -857,7 +857,7 @@ async function callOpenRouter(text){
   const res=await fetch('/api/chat',{
     method:'POST',
     headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({provider:'openrouter',text,history,system:getSystem(),model:'mistralai/mistral-7b-instruct'})
+    body:JSON.stringify({provider:'openrouter',text,history,system:getSystem(),model:'nvidia/nemotron-3-nano-30b-a3b:free'})
   });
   if(!res.ok){const e=await res.json().catch(()=>({}));throw new Error(e.error||'OpenRouter HTTP '+res.status);}
   const data=await res.json();
