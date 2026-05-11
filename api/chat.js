@@ -29,9 +29,11 @@ module.exports = async function handler(req, res) {
 
   const { provider, text, b64, mime, history, system, model, temperature } = req.body;
 
-  // Validate file upload
-  const fileErr=validateFile(mime, b64?b64.length:0);
-  if(fileErr) return res.status(400).json({ error: fileErr });
+  // Validate file upload — only when a file is actually attached
+  if(mime || b64){
+    const fileErr=validateFile(mime, b64?b64.length:0);
+    if(fileErr) return res.status(400).json({ error: fileErr });
+  }
 
   // Keys from Vercel Environment Variables — never exposed to browser
   const GROQ_KEY       = process.env.GROQ_API_KEY;

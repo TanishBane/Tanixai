@@ -341,6 +341,9 @@ window.addEventListener('DOMContentLoaded', ()=>{
   document.getElementById('topbar').style.opacity='0.35';
   document.getElementById('input-footer').classList.add('hidden');
   applyTheme(currentTheme);
+  // Sync version badge from constant — never let HTML drift out of sync
+  const verEl=document.getElementById('appVersion');
+  if(verEl) verEl.textContent=APP_VERSION;
 
   // Remove intro overlay after animation
   setTimeout(()=>{

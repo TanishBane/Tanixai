@@ -220,21 +220,30 @@ body {
   background: rgba(232,168,73,0.06);
 }
 
-/* Version badge — sits inline beside the logo name */
+/* Version badge — glowing gradient pill */
 .tb-version {
   font-family: var(--fm);
   font-size: 8px;
   font-weight: 700;
-  color: var(--accent);
-  letter-spacing: 1.5px;
+  color: #fff;
+  letter-spacing: 1.8px;
   text-transform: uppercase;
-  padding: 2px 7px;
-  border: 1px solid rgba(232,168,73,0.25);
-  border-radius: 10px;
-  background: rgba(232,168,73,0.07);
-  opacity: 0.8;
+  padding: 3px 9px;
+  border-radius: 20px;
+  background: linear-gradient(105deg, rgba(232,168,73,0.85) 0%, rgba(232,100,40,0.75) 100%);
+  border: 1px solid rgba(255,200,100,0.35);
+  box-shadow:
+    0 0 8px rgba(232,168,73,0.35),
+    0 0 18px rgba(232,100,40,0.15),
+    inset 0 1px 0 rgba(255,255,255,0.15);
   flex-shrink: 0;
   align-self: center;
+  position: relative;
+  animation: versionPulse 3s ease-in-out infinite;
+}
+@keyframes versionPulse {
+  0%, 100% { box-shadow: 0 0 8px rgba(232,168,73,0.35), 0 0 18px rgba(232,100,40,0.15), inset 0 1px 0 rgba(255,255,255,0.15); }
+  50%       { box-shadow: 0 0 14px rgba(232,168,73,0.55), 0 0 28px rgba(232,100,40,0.25), inset 0 1px 0 rgba(255,255,255,0.15); }
 }
 
 .tb-right { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
