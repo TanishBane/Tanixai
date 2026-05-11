@@ -829,7 +829,7 @@ body { padding-left: var(--sidebar-w); }
 .hist-meta { font-family:var(--fm); font-size:9px; color:var(--txt-muted); }
 .hist-del {
   background:transparent; border:none; color:var(--txt-muted);
-  cursor:none; font-size:12px; padding:2px 4px; border-radius:4px;
+  cursor:pointer; font-size:12px; padding:2px 4px; border-radius:4px;
   transition:color .2s;
 }
 .hist-del:hover { color: var(--danger); }
@@ -956,24 +956,7 @@ body { padding-left: var(--sidebar-w); }
   gap: 8px;
   justify-content: center;
 }
-.wchip {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  color: var(--txt-dim);
-  padding: 8px 16px;
-  border-radius: 20px;
-  font-size: 12px;
-  cursor: pointer;
-  font-family: var(--fb);
-  font-weight: 400;
-  transition: all .25s var(--ease);
-}
-.wchip:hover {
-  background: var(--surface-h);
-  border-color: var(--border-h);
-  color: var(--txt);
-  transform: translateY(-2px);
-}
+/* wchip styles moved and upgraded above */
 
 .w-fact {
   background: var(--surface);
@@ -1069,11 +1052,7 @@ body { padding-left: var(--sidebar-w); }
   border: 1px solid var(--user-border);
   border-radius: var(--r) 4px var(--r) var(--r);
 }
-.msg.ai .bubble {
-  background: var(--ai-bg);
-  border: 1px solid var(--ai-border);
-  border-radius: 4px var(--r) var(--r) var(--r);
-}
+/* .msg.ai .bubble styles with left accent now defined above */
 
 .bubble img {
   max-width: 100%;
@@ -1092,6 +1071,7 @@ body { padding-left: var(--sidebar-w); }
   font-size: 12px;
   color: var(--accent-b);
 }
+/* ══ CODE BLOCK COPY BUTTON ══ */
 .bubble pre {
   background: rgba(0,0,0,0.35);
   border: 1px solid var(--border);
@@ -1102,6 +1082,68 @@ body { padding-left: var(--sidebar-w); }
   font-family: var(--fm);
   font-size: 12px;
   line-height: 1.7;
+  position: relative; /* needed for absolute copy btn */
+}
+.code-copy {
+  position: absolute;
+  top: 8px; right: 8px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 5px;
+  color: var(--txt-muted);
+  font-family: var(--fm);
+  font-size: 8px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  cursor: pointer;
+  transition: all .18s;
+  opacity: 0;
+  pointer-events: none;
+}
+.bubble pre:hover .code-copy {
+  opacity: 1;
+  pointer-events: all;
+}
+.code-copy:hover {
+  background: var(--accent-d);
+  border-color: rgba(232,168,73,0.3);
+  color: var(--accent);
+}
+.code-copy.copied {
+  color: var(--success);
+  border-color: rgba(73,232,122,0.3);
+}
+
+/* ══ AI BUBBLE LEFT ACCENT ══ */
+.msg.ai .bubble {
+  background: var(--ai-bg);
+  border: 1px solid var(--ai-border);
+  border-radius: 4px var(--r) var(--r) var(--r);
+  border-left: 2px solid rgba(232,168,73,0.18);
+}
+
+/* ══ WELCOME CHIPS — left-accent like follow-up chips ══ */
+.wchip {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 2px solid rgba(232,168,73,0.35);
+  color: var(--txt-dim);
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 12px;
+  cursor: pointer;
+  font-family: var(--fb);
+  font-weight: 400;
+  transition: all .25s var(--ease);
+  text-align: left;
+}
+.wchip:hover {
+  background: var(--accent-d);
+  border-color: rgba(232,168,73,0.4);
+  border-left-color: var(--accent);
+  color: var(--txt);
+  transform: translateX(3px);
 }
 .bubble pre code { background:none; border:none; padding:0; color:var(--txt-dim); }
 .bubble strong { color: var(--txt); font-weight: 500; }
@@ -1292,14 +1334,14 @@ body { padding-left: var(--sidebar-w); }
   width:26px; height:26px;
   background:var(--surface); border:1px solid var(--border);
   border-radius:6px; color:var(--txt-dim);
-  cursor:none; display:flex; align-items:center; justify-content:center;
+  cursor:pointer; display:flex; align-items:center; justify-content:center;
   transition:all .18s;
 }
 .search-nav button:hover { background:var(--surface-h); color:var(--txt); }
 .search-nav button:disabled { opacity:.3; }
 #search-close {
   background:transparent; border:none;
-  color:var(--txt-muted); cursor:none; font-size:16px;
+  color:var(--txt-muted); cursor:pointer; font-size:16px;
   padding:2px 4px; border-radius:5px; transition:color .2s; line-height:1;
 }
 #search-close:hover { color:var(--danger); }
@@ -1341,7 +1383,7 @@ mark.search-hl.active {
 .media-type { font-size: 10px; color:var(--txt-muted); }
 .media-remove {
   background:transparent; border:none; color:var(--txt-muted);
-  cursor:none; font-size:18px; padding:4px; transition:color .2s;
+  cursor:pointer; font-size:18px; padding:4px; transition:color .2s;
 }
 .media-remove:hover { color: var(--danger); }
 

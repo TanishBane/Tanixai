@@ -1029,7 +1029,7 @@ async function send(){
   removeMedia();
 
   history.push({role:'user',text:finalText,b64:isTextFile?null:b64,mime,pdf,name});
-  addBubble('user',text,b64&&!pdf&&mime!=='text/plain'?('data:'+mime+';base64,'+b64):null,pdf?name:null,isTextFile?name:null);
+  addBubble('user',text,b64&&!pdf&&mime!=='text/plain'?('data:'+mime+';base64,'+b64):null,pdf?name:null,null,false,isTextFile?name:null);
 
   txt.value=''; txt.style.height='auto';
   onInput(txt);
@@ -1301,9 +1301,12 @@ document.addEventListener('click',e=>{
 
 async function callAPI(text,b64,mime,signal){
   const all=['groq','openrouter','gemini'];
-  const order=forcedProvider
-    ?[forcedProvider,...all.filter(p=>p!==forcedProvider)]
-    :all;
+  // When a non-text file is attached, only Gemini is multimodal — always try it first
+  const order = b64
+    ? ['gemini', ...all.filter(p => p !== 'gemini')]
+    : forcedProvider
+        ? [forcedProvider, ...all.filter(p => p !== forcedProvider)]
+        : all;
 
   let lastErr=null;
   for(const provider of order){
@@ -1415,6 +1418,7 @@ function addBubble(role,text,imgSrc,pdfName,genImgPrompt,skipTypewriter,textFile
     if(skipTypewriter){
       bub.innerHTML = rendered;
       appendGenImg(bub, genImgPrompt);
+      injectCodeCopyButtons(bub);
     } else {
       const temp=document.createElement('div'); temp.innerHTML=rendered;
       const fullText=temp.textContent||'';
@@ -1427,6 +1431,7 @@ function addBubble(role,text,imgSrc,pdfName,genImgPrompt,skipTypewriter,textFile
           clearInterval(iv);
           bub.innerHTML=rendered;
           appendGenImg(bub,genImgPrompt);
+          injectCodeCopyButtons(bub);
           return;
         }
         i+=speed;
@@ -1572,6 +1577,26 @@ function fmt(t){
     .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
     .replace(/\*(.+?)\*/g,'<em>$1</em>')
     .replace(/\n/g,'<br>');
+}
+
+/* ── Code block copy buttons — injected after innerHTML is set ── */
+function injectCodeCopyButtons(bub){
+  bub.querySelectorAll('pre').forEach(pre=>{
+    if(pre.querySelector('.code-copy')) return; // already done
+    const btn=document.createElement('button');
+    btn.className='code-copy';
+    btn.textContent='Copy';
+    btn.onclick=()=>{
+      const code=pre.querySelector('code');
+      const text=code?code.textContent:pre.textContent;
+      navigator.clipboard.writeText(text).then(()=>{
+        btn.textContent='Copied!';
+        btn.classList.add('copied');
+        setTimeout(()=>{ btn.textContent='Copy'; btn.classList.remove('copied'); },1600);
+      }).catch(()=>{ btn.textContent='Failed'; setTimeout(()=>{ btn.textContent='Copy'; },1600); });
+    };
+    pre.appendChild(btn);
+  });
 }
 
 /* ═══════════════════════════════════════════
