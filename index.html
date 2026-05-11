@@ -3,6 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#06060a">
+<meta name="description" content="TanixAI — Your personal AI platform">
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="/icon-192.png">
 <title>TanixAI — By Tanish Bane</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;0,700;1,300;1,400&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&family=Manrope:wght@400;500;600;700;800&family=Roboto:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
@@ -48,6 +52,7 @@
     <div class="tb-logo" onclick="newChat()">
       <span class="tb-logo-gem">TX</span>
       <span class="tb-logo-name">TanixAI</span>
+      <span class="tb-version" id="appVersion">v0.5</span>
     </div>
     <div class="tb-divider"></div>
     <span id="providerBadge" class="tb-badge" style="display:none"></span>
@@ -72,7 +77,6 @@
       <button class="tb-lang-btn on" id="lEN" onclick="setLang('en')">EN</button>
       <button class="tb-lang-btn" id="lHI" onclick="setLang('hi')">HI</button>
     </div>
-    <button class="tb-btn" onclick="exportChat()">Export</button>
     <button class="tb-btn tb-btn-danger" onclick="clearChat()">Clear</button>
   </div>
 </header>
@@ -182,7 +186,7 @@
             <line x1="8" y1="23" x2="16" y2="23"/>
           </svg>
         </button>
-        <button id="sbtn" class="send-btn" onclick="send()" title="Send">
+        <button id="sbtn" class="send-btn" onclick="handleSendBtn()" title="Send">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <line x1="22" y1="2" x2="11" y2="13"/>
             <polygon points="22 2 15 22 11 13 2 9 22 2"/>
@@ -190,12 +194,12 @@
         </button>
       </div>
     </div>
-    <div id="input-foot">
-      <div class="input-meta">
-        <span id="cc">0 / 2000</span>
-        <span id="coolHint" class="hint">Enter send · Shift+Enter new line · Ctrl+F search</span>
-      </div>
-    </div>
+<div id="input-foot">
+       <div class="input-meta">
+         <span id="cc">0 / 2000</span>
+         <span id="coolHint" class="hint">Enter send · Shift+Enter new line · Ctrl+F search</span>
+       </div>
+     </div>
   </div>
   <p class="ai-disclaimer">TanixAI is an AI and can make mistakes. Always double-check responses.</p>
 </footer>
@@ -206,5 +210,10 @@
 </button>
 
 <script src="app.js"></script>
+<script>
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('/sw.js').catch(()=>{});
+}
+</script>
 </body>
 </html>

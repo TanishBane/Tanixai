@@ -3,13 +3,35 @@
    Keys live here (server-side), never in the browser
    ═══════════════════════════════════════════ */
 
+const ALLOWED_MIMES={
+  'image/png':'png',
+  'image/jpeg':'jpeg',
+  'image/jpg':'jpg',
+  'image/webp':'webp',
+  'application/pdf':'pdf',
+  'text/plain':'txt',
+  'text/csv':'csv',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document':'docx'
+};
+const MAX_FILE_SIZE=10*1024*1024;
+
+function validateFile(mime, size){
+  if(!mime || !ALLOWED_MIMES[mime]) return 'File type not allowed';
+  if(size && size>MAX_FILE_SIZE) return 'File too large (max 10MB)';
+  return null;
+}
+
 module.exports = async function handler(req, res) {
   // Only allow POST
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { provider, text, b64, mime, history, system, model } = req.body;
+  const { provider, text, b64, mime, history, system, model, temperature } = req.body;
+
+  // Validate file upload
+  const fileErr=validateFile(mime, b64?b64.length:0);
+  if(fileErr) return res.status(400).json({ error: fileErr });
 
   // Keys from Vercel Environment Variables — never exposed to browser
   const GROQ_KEY       = process.env.GROQ_API_KEY;
@@ -35,7 +57,7 @@ module.exports = async function handler(req, res) {
           model: model || 'llama-3.3-70b-versatile',
           messages: [{ role: 'system', content: system }, ...msgs],
           max_tokens: 1024,
-          temperature: 0.88
+          temperature: temperature || 0.88
         })
       });
       if (!groqRes.ok) {

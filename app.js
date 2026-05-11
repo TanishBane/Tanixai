@@ -1,9 +1,9 @@
 /* ═══════════════════════════════════════════
-   TANIXAI — CINEMATIC UI ENGINE
+   TANIXAI — CINEMATIC UI ENGINE  v0.6
    ═══════════════════════════════════════════ */
 
 /* ── CONFIG ── */
-/* API keys removed — now handled securely by /api/chat serverless function */
+const APP_VERSION = 'v0.6';
 let   currentProvider = 'groq';
 
 /* ── FACTS ── */
@@ -42,12 +42,70 @@ const FACTS = [
 
 const GEN_TRIGGERS = ['generate','create an image','draw','make an image','imagine','show me an image','picture of','image of','sketch','illustration of','paint me'];
 
+/* ══════════════════════════════════════════════════════════
+   TONES  — v0.6: 10 professional tones with full metadata
+   ══════════════════════════════════════════════════════════ */
 const TONES = {
-  default: '',
-  formal:  'Respond in a formal and professional tone.',
-  casual:  'Respond in a casual, conversational tone. Use contractions freely.',
-  funny:   'Be witty and add light humour where appropriate. Keep it tasteful.',
-  concise: 'Be very concise — 2 to 3 sentences max unless truly needed.'
+  default:   {
+    label: 'Default',
+    icon:  '✦',
+    desc:  'Natural & balanced',
+    prompt: ''
+  },
+  formal: {
+    label: 'Formal',
+    icon:  '🎯',
+    desc:  'Professional & precise',
+    prompt: 'Respond in a formal, professional tone. Use complete sentences and precise language. Avoid contractions and colloquialisms. Structure your response clearly.'
+  },
+  casual: {
+    label: 'Casual',
+    icon:  '💬',
+    desc:  'Relaxed & conversational',
+    prompt: 'Respond in a casual, conversational tone. Use contractions freely. Keep it friendly, warm, and approachable — like texting a smart friend.'
+  },
+  concise: {
+    label: 'Concise',
+    icon:  '⚡',
+    desc:  '2–3 sentences max',
+    prompt: 'Be extremely concise — 2 to 3 sentences maximum unless the question genuinely requires more. No padding, no preamble, no summary at the end. Get to the point immediately.'
+  },
+  academic: {
+    label: 'Academic',
+    icon:  '📚',
+    desc:  'Scholarly & structured',
+    prompt: 'Respond in an academic, scholarly tone. Structure your response with clear logical flow. Use proper subject-specific terminology. Make your reasoning and evidence explicit. Suitable for study, research, and essay preparation.'
+  },
+  executive: {
+    label: 'Executive',
+    icon:  '📊',
+    desc:  'C-suite brief format',
+    prompt: 'Respond in executive summary style. Lead with the single key takeaway in the first sentence. Then provide 2–3 supporting points in plain, direct language. Be action-oriented. No filler, no pleasantries, no hedging.'
+  },
+  mentor: {
+    label: 'Mentor',
+    icon:  '🧭',
+    desc:  'Warm, guiding & honest',
+    prompt: 'Respond like a knowledgeable mentor who genuinely cares about the person. Be warm but direct. Share your perspective honestly — do not just validate. Acknowledge difficulty when it exists. Focus on helping the person grow and think independently, not just handing them answers.'
+  },
+  technical: {
+    label: 'Technical',
+    icon:  '⚙️',
+    desc:  'Precise & implementation-ready',
+    prompt: 'Respond in a highly technical tone. Be precise, use correct terminology, and include implementation details, edge cases, and caveats where relevant. Assume the reader is technically proficient. Prioritise accuracy and completeness over accessibility.'
+  },
+  socratic: {
+    label: 'Socratic',
+    icon:  '🔍',
+    desc:  'Question-led & exploratory',
+    prompt: 'Use a Socratic approach. Instead of stating answers directly, guide the person with well-placed questions and step-by-step reasoning. Help them arrive at the conclusion themselves. Prompt deeper thinking. Acknowledge what they likely already know and build from there.'
+  },
+  devil: {
+    label: "Devil's Advocate",
+    icon:  '😈',
+    desc:  'Challenge your assumptions',
+    prompt: "Play devil's advocate. Respectfully but firmly challenge the assumptions embedded in every question or statement. Offer the strongest reasonable counter-argument to any position presented. This is not contrarianism — it is rigorous thinking. Always clarify you are doing this intentionally."
+  },
 };
 
 /* ── SYSTEM PROMPTS ── */
@@ -92,7 +150,8 @@ YOUR HARD RULES — never break these:
 - Never use bullet points for casual conversation — only use them when listing things that genuinely need a list.
 - Never start a response with "I" as the first word.
 - Do not write long paragraphs when one sentence will do.
-- When someone asks a simple question, give a simple answer first — then expand only if needed.`;
+- When someone asks a simple question, give a simple answer first — then expand only if needed.
+- Always complete your response fully. Never stop mid-sentence, mid-list, or mid-thought. If you start explaining something, finish it.`;
 
 const SYSTEM_TANISH = `You are TanixAI in Portfolio Mode — a dedicated showcase for Tanish Bane. Answer ONLY questions about Tanish Bane. Speak about him with genuine pride because he built you.
 
@@ -141,12 +200,13 @@ YOUR TONE: Friendly but direct — like a sharp older cousin who actually knows 
 
 /* ═══════════════════════════════════════════
    STATE
-   ═══════════════════════════════════════════ */
-let history=[], tone='default', busy=false, mode='default', lang='en';
+   ═════════════════════════════════════════ */
+let history=[], tone=localStorage.getItem('tanix_tone')||'default', busy=false, mode='default', lang='en';
 let recog=null, recOn=false;
 let mediaB64=null, mediaMime=null, mediaName='', isPDF=false;
 let lastSendTime=0, cooldownTimer=null;
 const COOLDOWN_MS=15000;
+let sessionMessageCount=0;
 
 const MODELS=[
   {id:'groq',       name:'Tanix Fast',      sub:'Fastest response',  icon:'⚡'},
@@ -154,12 +214,130 @@ const MODELS=[
   {id:'gemini',     name:'Tanix Quality',   sub:'Highest quality',   icon:'✦'},
 ];
 let exhaustedProviders = new Set();
+let currentController  = null;
+
 let forcedProvider     = null;
+let draftSaveTimer=null;
+let currentTemperature=0.88;
+
+/* ═══════════════════════════════════════════
+   INJECT STYLES  — v0.6 new UI components
+   ═══════════════════════════════════════════ */
+function injectStyles(){
+  const style=document.createElement('style');
+  style.id='tanix-v06-styles';
+  style.textContent=`
+    /* ── TONE SELECTOR ── */
+    .tone-grid{display:flex;flex-direction:column;gap:5px;margin-top:10px;}
+    .tone-option{
+      display:flex;align-items:center;gap:11px;
+      padding:10px 13px;
+      background:rgba(255,255,255,0.025);
+      border:1px solid rgba(255,255,255,0.06);
+      border-radius:8px;
+      cursor:pointer;
+      transition:background .16s ease, border-color .16s ease, transform .12s ease;
+      width:100%;text-align:left;
+      color:var(--text,#e8e8e8);
+      font-family:inherit;
+    }
+    .tone-option:hover{
+      background:var(--accent-d,rgba(232,168,73,0.10));
+      border-color:rgba(255,255,255,0.13);
+      transform:translateX(2px);
+    }
+    .tone-option.active{
+      background:var(--accent-d,rgba(232,168,73,0.12));
+      border-color:var(--accent,#e8a849);
+    }
+    .tone-icon{font-size:15px;width:22px;text-align:center;flex-shrink:0;line-height:1;}
+    .tone-info{display:flex;flex-direction:column;gap:2px;flex:1;min-width:0;overflow:hidden;}
+    .tone-name{
+      font-size:12px;font-weight:600;
+      font-family:'Manrope',sans-serif;
+      letter-spacing:.01em;
+      color:inherit;
+      white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    }
+    .tone-option.active .tone-name{color:var(--accent,#e8a849);}
+    .tone-desc-text{
+      font-size:10px;
+      opacity:.5;
+      font-family:'DM Sans',sans-serif;
+      white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    }
+    .tone-check{
+      margin-left:auto;font-size:11px;
+      color:var(--accent,#e8a849);
+      font-weight:700;flex-shrink:0;
+    }
+
+    /* ── FOLLOW-UP CHIPS ── */
+    .followup-chips{
+      display:flex;flex-direction:column;gap:5px;
+      margin-top:13px;
+      padding-top:11px;
+      border-top:1px solid rgba(255,255,255,0.06);
+      animation:fuFadeIn .35s ease forwards;
+    }
+    @keyframes fuFadeIn{
+      from{opacity:0;transform:translateY(6px);}
+      to{opacity:1;transform:translateY(0);}
+    }
+    .followup-label{
+      font-size:9px;
+      font-family:'Space Mono',monospace;
+      letter-spacing:.13em;
+      text-transform:uppercase;
+      opacity:.4;
+      margin-bottom:3px;
+      color:var(--accent,#e8a849);
+    }
+    .followup-chip{
+      display:flex;align-items:flex-start;gap:8px;
+      width:100%;
+      padding:8px 11px;
+      background:rgba(255,255,255,0.025);
+      border:1px solid rgba(255,255,255,0.07);
+      border-left:2px solid var(--accent,#e8a849);
+      border-radius:6px;
+      font-size:12px;
+      font-family:'DM Sans',sans-serif;
+      color:var(--text,#e8e8e8);
+      text-align:left;
+      cursor:pointer;
+      transition:background .15s ease, border-color .15s ease, transform .12s ease;
+      line-height:1.45;
+    }
+    .followup-chip::before{
+      content:'→';
+      font-size:11px;
+      color:var(--accent,#e8a849);
+      opacity:.6;
+      flex-shrink:0;
+      margin-top:1px;
+    }
+    .followup-chip:hover{
+      background:var(--accent-d,rgba(232,168,73,0.10));
+      border-color:var(--accent,#e8a849);
+      transform:translateX(3px);
+    }
+
+    /* ── SECTION DIVIDER in personalization ── */
+    .personal-tone-divider{
+      height:1px;
+      background:rgba(255,255,255,0.06);
+      margin:20px 0 18px;
+    }
+  `;
+  document.head.appendChild(style);
+}
 
 /* ═══════════════════════════════════════════
    BOOT
    ═══════════════════════════════════════════ */
 window.addEventListener('DOMContentLoaded', ()=>{
+  injectStyles();
   document.getElementById('topbar').style.opacity='0.35';
   document.getElementById('input-footer').classList.add('hidden');
   applyTheme(currentTheme);
@@ -183,7 +361,9 @@ function enterApp(){
     renderModelDropdown();
     loadHistoryList();
     initScrollBtn();
-    document.getElementById('txt').focus();
+    const txtEl=document.getElementById('txt');
+    txtEl.focus();
+    onInput(txtEl); // initialise counter display
   }, 500);
 }
 
@@ -265,7 +445,7 @@ function loadHistoryList(){
       ? `<svg width="10" height="10" viewBox="0 0 24 24" fill="var(--accent)" stroke="var(--accent)" stroke-width="2"><path d="M12 2l3 7h6l-5 4 2 7-6-4-6 4 2-7-5-4h6z"/></svg>`
       : `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3 7h6l-5 4 2 7-6-4-6 4 2-7-5-4h6z"/></svg>`;
     return `<div class="hist-item ${d.id===currentChatId?'active':''} ${d.pinned?'pinned-chat':''}" onclick="loadChat('${d.id}')">
-      <span class="hist-title">${d.title||'Chat'}</span>
+      <span class="hist-title">${escHTML(d.title||'Chat')}</span>
       <span class="hist-meta">${date}</span>
       <button class="hist-pin ${d.pinned?'pinned':''}" onclick="event.stopPropagation();pinChat('${d.id}')" title="${d.pinned?'Unpin':'Pin'}">${pinIcon}</button>
       <button class="hist-del" onclick="event.stopPropagation();deleteChat('${d.id}')" title="Delete">✕</button>
@@ -352,8 +532,9 @@ function clearMode(){
 }
 function getSystem(){
   let sys=mode==='tanish'?SYSTEM_TANISH:mode==='student'?SYSTEM_STUDENT:SYSTEM_BASE;
-  if(TONES[tone])sys+='\n\n'+TONES[tone];
-  if(lang==='hi')sys+='\n\nAlways respond in Hindi using Devanagari script.';
+  const tonePrompt=TONES[tone]?.prompt||'';
+  if(tonePrompt) sys+='\n\n'+tonePrompt;
+  if(lang==='hi') sys+='\n\nAlways respond in Hindi using Devanagari script.';
   return sys;
 }
 
@@ -364,6 +545,15 @@ function setLang(l){
   lang=l;
   document.getElementById('lEN').classList.toggle('on',l==='en');
   document.getElementById('lHI').classList.toggle('on',l==='hi');
+}
+
+/* ─── selectTone — called from the Personalization panel ─── */
+function selectTone(t){
+  if(!TONES[t]) return;
+  tone=t;
+  localStorage.setItem('tanix_tone',t);
+  const toneData=TONES[t];
+  showToast(toneData.icon+' Tone: '+toneData.label,'success',2000);
 }
 
 /* ═══════════════════════════════════════════
@@ -448,7 +638,17 @@ document.addEventListener('keydown',e=>{
   if((e.ctrlKey||e.metaKey)&&e.key==='f'){
     e.preventDefault(); openSearch();
   }
-  if(e.key==='Escape') closeSearch();
+  if((e.ctrlKey||e.metaKey)&&e.key==='k'){
+    e.preventDefault(); showShortcutsPanel();
+  }
+  if((e.ctrlKey||e.metaKey)&&e.key==='s'){
+    e.preventDefault(); saveDraft();
+    showToast('Draft saved','success',1500);
+  }
+  if((e.ctrlKey||e.metaKey)&&e.key==='l'){
+    e.preventDefault(); toggleHistPanel();
+  }
+  if(e.key==='Escape'){ closeSearch(); const sp=document.getElementById('shortcutsPanel'); if(sp) sp.remove(); }
 });
 
 /* ═══════════════════════════════════════════
@@ -541,13 +741,206 @@ function restoreSearchOriginals(){
   searchOriginals.clear();
 }
 
+/* ─── Input counter — v0.6: no hard cap, show raw char count ─── */
 function onInput(el){
   el.style.height='auto';
   el.style.height=Math.min(el.scrollHeight,120)+'px';
   const n=el.value.length;
   const cc=document.getElementById('cc');
-  cc.textContent=n+' / 2000';
-  cc.className='cc'+(n>1800?' warn':'');
+  if(!cc) return;
+  cc.textContent=n+' chars';
+  cc.className='cc'+(n>8000?' warn':'');
+}
+
+/* ═══════════════════════════════════════════
+   AUTO-SAVE DRAFTS
+   ═══════════════════════════════════════════ */
+function saveDraft(){
+  const txt=document.getElementById('txt');
+  if(txt && txt.value.trim()){
+    localStorage.setItem('tanix_draft', txt.value);
+  }
+}
+function restoreDraft(){
+  const draft=localStorage.getItem('tanix_draft');
+  if(draft){
+    const txt=document.getElementById('txt');
+    if(txt){ txt.value=draft; onInput(txt); }
+  }
+}
+function clearDraft(){
+  localStorage.removeItem('tanix_draft');
+}
+function startDraftAutoSave(){
+  if(draftSaveTimer) clearInterval(draftSaveTimer);
+  draftSaveTimer=setInterval(saveDraft, 5000);
+}
+
+/* ═══════════════════════════════════════════
+   RELATIVE TIME
+   ═══════════════════════════════════════════ */
+function getRelativeTime(ts){
+  const diff=Date.now()-ts;
+  const sec=Math.floor(diff/1000);
+  const min=Math.floor(sec/60);
+  const hr=Math.floor(min/60);
+  const day=Math.floor(hr/24);
+  if(sec<60) return 'just now';
+  if(min<60) return min+'m ago';
+  if(hr<24) return hr+'h ago';
+  if(day<7) return day+'d ago';
+  return new Date(ts).toLocaleDateString('en-IN',{day:'numeric',month:'short'});
+}
+
+/* ═══════════════════════════════════════════
+   CONVERSATION SEARCH
+   ═══════════════════════════════════════════ */
+let chatSearchMatches=[], chatSearchIdx=-1;
+function searchCurrentChat(term){
+  chatSearchMatches=[];
+  if(!term) return [];
+  const bubbles=document.querySelectorAll('#chat .bubble');
+  const termLow=term.toLowerCase();
+  bubbles.forEach((bub, idx)=>{
+    const text=bub.textContent.toLowerCase();
+    if(text.includes(termLow)){
+      const wrapper=bub.closest('.msg');
+      if(wrapper) chatSearchMatches.push({el:wrapper, idx});
+    }
+  });
+  return chatSearchMatches;
+}
+function highlightChatMatch(dir){
+  if(!chatSearchMatches.length) return;
+  chatSearchMatches[chatSearchIdx]?.el?.classList.remove('search-active');
+  chatSearchIdx=(chatSearchIdx+dir+chatSearchMatches.length)%chatSearchMatches.length;
+  const match=chatSearchMatches[chatSearchIdx];
+  if(match){
+    match.el.classList.add('search-active');
+    match.el.scrollIntoView({behavior:'smooth',block:'center'});
+    updateChatSearchCount();
+  }
+}
+function updateChatSearchCount(){
+  const el=document.getElementById('chatSearchCount');
+  if(!el) return;
+  if(!chatSearchMatches.length){ el.textContent='No results'; el.className='no-results'; }
+  else { el.textContent=(chatSearchIdx+1)+' / '+chatSearchMatches.length; el.className='has-results'; }
+}
+
+/* ═══════════════════════════════════════════
+   ERROR CLASSIFICATION
+   ═══════════════════════════════════════════ */
+function classifyError(err){
+  const msg=err.message?.toLowerCase()||'';
+  if(msg.includes('network')||msg.includes('fetch')||msg.includes('failed')) return 'network';
+  if(msg.includes('429')||msg.includes('quota')||msg.includes('rate limit')||msg.includes('resource_exhausted')) return 'ratelimit';
+  if(msg.includes('401')||msg.includes('403')||msg.includes('unauthorized')) return 'auth';
+  if(msg.includes('500')||msg.includes('502')||msg.includes('503')) return 'server';
+  if(msg.includes('timeout')) return 'timeout';
+  return 'unknown';
+}
+function getErrorMessage(type){
+  const msgs={
+    network:'Network error — check your connection',
+    ratelimit:'Rate limited — please wait a moment',
+    auth:'Authentication error — contact the developer',
+    server:'Server error — please try again later',
+    timeout:'Request timed out — please try again',
+    unknown:'An error occurred — please try again'
+  };
+  return msgs[type]||msgs.unknown;
+}
+
+/* ═══════════════════════════════════════════
+   SHARE CONVERSATION
+   ═══════════════════════════════════════════ */
+async function shareConversation(){
+  if(!history.length){ showToast('No conversation to share','warn'); return; }
+  try{
+    const data=btoa(encodeURIComponent(JSON.stringify(history.slice(0,10))));
+    const url=window.location.origin+'?share='+data;
+    await navigator.clipboard.writeText(url);
+    showToast('Share link copied!','success');
+  }catch(e){
+    showToast('Failed to create share link','warn');
+  }
+}
+function loadSharedConversation(data){
+  try{
+    const hist=JSON.parse(decodeURIComponent(atob(data)));
+    if(Array.isArray(hist)){
+      history=hist;
+      document.getElementById('chat').innerHTML='';
+      history.forEach(m=>{
+        if(m.role==='user') addBubble('user',m.text);
+        else addBubble('ai',m.text);
+      });
+      showToast('Shared conversation loaded','success');
+    }
+  }catch(e){
+    showToast('Invalid share link','warn');
+  }
+}
+
+/* ═══════════════════════════════════════════
+   TEMPERATURE SLIDER
+   ═══════════════════════════════════════════ */
+function setTemperature(val){
+  currentTemperature=val;
+  localStorage.setItem('tanix_temp', val);
+}
+function getTemperature(){
+  return parseFloat(localStorage.getItem('tanix_temp'))||0.88;
+}
+
+/* ═══════════════════════════════════════════
+   MESSAGE REACTIONS
+   ═══════════════════════════════════════════ */
+const REACTIONS=['👍','👎','❤️','😂','🤔'];
+function addReaction(msgEl, reaction){
+  const existing=msgEl.querySelector('.reactions');
+  if(!existing) return;
+  const btn=document.createElement('button');
+  btn.className='reaction-btn';
+  btn.textContent=reaction;
+  btn.onclick=(e)=>{e.stopPropagation();btn.remove();};
+  existing.appendChild(btn);
+}
+function showReactionPicker(msgEl){
+  const picker=document.createElement('div');
+  picker.className='reaction-picker';
+  REACTIONS.forEach(r=>{
+    const btn=document.createElement('button');
+    btn.textContent=r;
+    btn.onclick=()=>{addReaction(msgEl, r); picker.remove();};
+    picker.appendChild(btn);
+  });
+  msgEl.appendChild(picker);
+}
+
+/* ═══════════════════════════════════════════
+   KEYBOARD SHORTCUTS PANEL
+   ═══════════════════════════════════════════ */
+const SHORTCUTS=[
+  {keys:'Ctrl+Enter', desc:'Send message'},
+  {keys:'Shift+Enter', desc:'New line'},
+  {keys:'Ctrl+F', desc:'Search chat'},
+  {keys:'Ctrl+K', desc:'Show shortcuts'},
+  {keys:'Ctrl+Shift+N', desc:'New chat'},
+  {keys:'Escape', desc:'Close dialogs'},
+  {keys:'Ctrl+S', desc:'Save draft'},
+  {keys:'Ctrl+L', desc:'Toggle history'},
+];
+function showShortcutsPanel(){
+  const existing=document.getElementById('shortcutsPanel');
+  if(existing){ existing.remove(); return; }
+  const panel=document.createElement('div');
+  panel.id='shortcutsPanel';
+  panel.className='shortcuts-panel';
+  panel.innerHTML=`<div class="sp-header"><span>Keyboard Shortcuts</span><button onclick="this.closest('#shortcutsPanel').remove()">✕</button></div>`;
+  panel.innerHTML+=SHORTCUTS.map(s=>`<div class="sp-item"><span class="sp-keys">${s.keys}</span><span class="sp-desc">${s.desc}</span></div>`).join('');
+  document.body.appendChild(panel);
 }
 
 /* ═══════════════════════════════════════════
@@ -582,6 +975,33 @@ function startCooldown(){
 }
 
 /* ═══════════════════════════════════════════
+   ABORT / STOP
+   ═══════════════════════════════════════════ */
+function stopGeneration(){
+  if(currentController){
+    currentController.abort();
+    currentController = null;
+    showToast('Generation stopped','warn',2000);
+  }
+}
+
+function setSendBusy(isBusy){
+  const sbtn=document.getElementById('sbtn');
+  if(!sbtn) return;
+  sbtn.classList.toggle('is-stop', isBusy);
+  sbtn.title = isBusy ? 'Stop generation' : 'Send';
+  sbtn.disabled = false;
+  sbtn.innerHTML = isBusy
+    ? `<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="3"/></svg>`
+    : `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>`;
+}
+
+function handleSendBtn(){
+  if(busy) stopGeneration();
+  else send();
+}
+
+/* ═══════════════════════════════════════════
    SEND
    ═══════════════════════════════════════════ */
 async function send(){
@@ -609,28 +1029,128 @@ async function send(){
   addBubble('user',text,b64&&!pdf&&mime!=='text/plain'?('data:'+mime+';base64,'+b64):null,pdf?name:null,isTextFile?name:null);
 
   txt.value=''; txt.style.height='auto';
-  document.getElementById('cc').textContent='0 / 2000';
+  onInput(txt);
 
   const typing=addTyping();
-  busy=true; document.getElementById('sbtn').disabled=true;
+  busy=true;
+  setSendBusy(true);
   const willGen=shouldGenImg(finalText)&&!b64;
 
+  currentController=new AbortController();
+  const signal=currentController.signal;
+
   try{
-    const reply=await callAPI(finalText,isTextFile?null:b64,mime);
+    const reply=await callAPI(finalText,isTextFile?null:b64,mime,signal);
     typing.remove();
     history.push({role:'model',text:reply});
     const genP=willGen?(text.replace(/generate|create an image|draw|make an image|imagine|show me an image|paint me/gi,'').trim()||text):null;
-    addBubble('ai',reply,null,null,genP);
+    const aiWrapEl=addBubble('ai',reply,null,null,genP);
     saveChatToHistory();
+
+    /* ── Follow-up questions — non-blocking background call ── */
+    if(!willGen && finalText.length>5){
+      generateFollowups(finalText, reply).then(qs=>{
+        if(qs && qs.length>=2) addFollowupChips(aiWrapEl, qs);
+      }).catch(()=>{});
+    }
+
   }catch(err){
     typing.remove();
-    addBubble('ai','Error: '+err.message);
+    if(err.name==='AbortError'){
+      addBubble('ai','⏹ Generation stopped by user.',null,null,null,true);
+    } else {
+      addBubble('ai','Error: '+err.message);
+    }
   }finally{
     busy=false;
+    currentController=null;
+    setSendBusy(false);
     lastSendTime=Date.now();
     startCooldown();
     txt.focus();
   }
+}
+
+/* ═══════════════════════════════════════════
+   FOLLOW-UP QUESTIONS  (v0.6)
+   ═══════════════════════════════════════════ */
+
+/**
+ * Calls Groq with a minimal prompt to get 3 follow-up questions.
+ * Returns an array of strings, or null on failure.
+ * This is a background operation — it never blocks the UI.
+ */
+async function generateFollowups(userMsg, aiReply){
+  try{
+    const prompt=
+      `User asked: "${userMsg.slice(0,300)}"\n`+
+      `AI replied: "${aiReply.slice(0,400)}"\n\n`+
+      `Generate exactly 3 short, relevant follow-up questions the user might want to ask next. `+
+      `Return ONLY a valid JSON array of 3 strings. No markdown, no explanation, no preamble.`;
+
+    const res=await fetch('/api/chat',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        provider:'groq',
+        model:'llama-3.1-8b-instant',
+        text:prompt,
+        history:[],
+        system:'You generate follow-up questions for a chat interface. Respond ONLY with a valid JSON array of exactly 3 short question strings. No markdown. No preamble. No explanation. Just the raw JSON array like: ["Q1?","Q2?","Q3?"]',
+        temperature:0.7,
+        max_tokens:200
+      })
+    });
+    if(!res.ok) return null;
+    const data=await res.json();
+    const raw=(data.result||'').trim();
+    // Extract JSON array even if the model wraps it in backticks
+    const match=raw.match(/\[[\s\S]*?\]/);
+    if(!match) return null;
+    const arr=JSON.parse(match[0]);
+    return Array.isArray(arr)
+      ? arr.filter(q=>typeof q==='string'&&q.trim().length>0).slice(0,3)
+      : null;
+  }catch(e){
+    return null; // Always fail silently
+  }
+}
+
+/**
+ * Renders follow-up question chips below an AI message bubble.
+ * Clicking a chip dismisses the chips and immediately sends that question.
+ */
+function addFollowupChips(msgWrap, questions){
+  if(!msgWrap||!questions||!questions.length) return;
+  const body=msgWrap.querySelector('.msg-body');
+  if(!body) return;
+  const existing=body.querySelector('.followup-chips');
+  if(existing) existing.remove();
+
+  const chips=document.createElement('div');
+  chips.className='followup-chips';
+
+  const lbl=document.createElement('div');
+  lbl.className='followup-label';
+  lbl.textContent='Ask next';
+  chips.appendChild(lbl);
+
+  questions.forEach(q=>{
+    const btn=document.createElement('button');
+    btn.className='followup-chip';
+    btn.textContent=q;
+    btn.onclick=()=>{
+      chips.remove();
+      const txtEl=document.getElementById('txt');
+      txtEl.value=q;
+      onInput(txtEl);
+      txtEl.focus();
+      send();
+    };
+    chips.appendChild(btn);
+  });
+
+  body.appendChild(chips);
 }
 
 /* ═══════════════════════════════════════════
@@ -677,17 +1197,7 @@ function initScrollBtn(){
    EXPORT
    ═══════════════════════════════════════════ */
 function exportChat(){
-  if(!history.length){showToast('Nothing to export yet.','warn');return;}
-  const lines=history.map(m=>{
-    const role=m.role==='user'?'You':'TanixAI';
-    return `[${role}]\n${m.text||''}\n`;
-  }).join('\n---\n\n');
-  const blob=new Blob([`TanixAI Chat Export\n${'='.repeat(40)}\n\n`+lines], {type:'text/plain'});
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);
-  a.download='tanixai-chat-'+new Date().toISOString().slice(0,10)+'.txt';
-  a.click();
-  showToast('Chat exported','success');
+  showToast('Export feature has been removed','warn');
 }
 
 function showProviderBadge(provider){
@@ -786,7 +1296,7 @@ document.addEventListener('click',e=>{
   }
 });
 
-async function callAPI(text,b64,mime){
+async function callAPI(text,b64,mime,signal){
   const all=['groq','openrouter','gemini'];
   const order=forcedProvider
     ?[forcedProvider,...all.filter(p=>p!==forcedProvider)]
@@ -797,14 +1307,15 @@ async function callAPI(text,b64,mime){
     if(exhaustedProviders.has(provider)) continue;
     try{
       let r;
-      if(provider==='gemini')     r=await callGemini(text,b64,mime);
-      else if(provider==='groq')  r=await callGroq(text);
-      else                        r=await callOpenRouter(text);
+      if(provider==='gemini')     r=await callGemini(text,b64,mime,signal);
+      else if(provider==='groq')  r=await callGroq(text,signal);
+      else                        r=await callOpenRouter(text,signal);
       currentProvider=provider;
       if(forcedProvider&&provider!==forcedProvider){ forcedProvider=null; }
       showProviderBadge(provider);
       return r;
     }catch(e){
+      if(e.name==='AbortError') throw e;
       if(isRateLimitError(e)||e.message.includes('401')){
         markExhausted(provider);
         if(provider===forcedProvider){
@@ -827,11 +1338,12 @@ function markExhausted(provider){
 }
 
 /* ── GEMINI ── */
-async function callGemini(text,b64,mime){
+async function callGemini(text,b64,mime,signal){
   const res=await fetch('/api/chat',{
     method:'POST',
     headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({provider:'gemini',text,b64,mime,history,system:getSystem()})
+    body:JSON.stringify({provider:'gemini',text,b64,mime,history,system:getSystem()}),
+    signal
   });
   if(!res.ok){const e=await res.json().catch(()=>({}));throw new Error(e.error||'Gemini HTTP '+res.status);}
   const data=await res.json();
@@ -840,11 +1352,12 @@ async function callGemini(text,b64,mime){
 }
 
 /* ── GROQ ── */
-async function callGroq(text){
+async function callGroq(text,signal){
   const res=await fetch('/api/chat',{
     method:'POST',
     headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({provider:'groq',text,history,system:getSystem(),model:'llama-3.1-8b-instant'})
+    body:JSON.stringify({provider:'groq',text,history,system:getSystem(),model:'llama-3.1-8b-instant'}),
+    signal
   });
   if(!res.ok){const e=await res.json().catch(()=>({}));throw new Error(e.error||'Groq HTTP '+res.status);}
   const data=await res.json();
@@ -853,11 +1366,12 @@ async function callGroq(text){
 }
 
 /* ── OPENROUTER ── */
-async function callOpenRouter(text){
+async function callOpenRouter(text,signal){
   const res=await fetch('/api/chat',{
     method:'POST',
     headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({provider:'openrouter',text,history,system:getSystem(),model:'nvidia/nemotron-3-nano-30b-a3b:free'})
+    body:JSON.stringify({provider:'openrouter',text,history,system:getSystem(),model:'mistralai/mistral-7b-instruct'}),
+    signal
   });
   if(!res.ok){const e=await res.json().catch(()=>({}));throw new Error(e.error||'OpenRouter HTTP '+res.status);}
   const data=await res.json();
@@ -879,12 +1393,16 @@ function addBubble(role,text,imgSrc,pdfName,genImgPrompt,skipTypewriter,textFile
   if(isUser){
     if(pdfName){
       const pill=document.createElement('div'); pill.className='pdf-pill';
-      pill.innerHTML='<span></span><span>'+pdfName+'</span>';
+      const ic=document.createElement('span'); ic.textContent='📄';
+      const nm=document.createElement('span'); nm.textContent=pdfName;
+      pill.appendChild(ic); pill.appendChild(nm);
       bub.appendChild(pill);
     }
     if(textFileName){
       const pill=document.createElement('div'); pill.className='pdf-pill';
-      pill.innerHTML='<span></span><span>'+textFileName+'</span>';
+      const ic=document.createElement('span'); ic.textContent='📝';
+      const nm=document.createElement('span'); nm.textContent=textFileName;
+      pill.appendChild(ic); pill.appendChild(nm);
       bub.appendChild(pill);
     }
     if(imgSrc){const img=document.createElement('img');img.src=imgSrc;img.alt='uploaded';bub.appendChild(img);}
@@ -933,7 +1451,6 @@ function addBubble(role,text,imgSrc,pdfName,genImgPrompt,skipTypewriter,textFile
       const allMsgs=Array.from(document.querySelectorAll('#chat .msg'));
       const idx=allMsgs.indexOf(wrap);
       if(idx<0)return;
-      // Remove this message and the AI reply after it (if exists)
       const toRemove=[wrap];
       if(allMsgs[idx+1]&&allMsgs[idx+1].classList.contains('ai')) toRemove.push(allMsgs[idx+1]);
       toRemove.forEach(m=>m.remove());
@@ -945,7 +1462,7 @@ function addBubble(role,text,imgSrc,pdfName,genImgPrompt,skipTypewriter,textFile
   }
   if(!isUser){
     const rg=document.createElement('button'); rg.className='act-btn regen-btn'; rg.textContent='Regenerate';
-    rg.onclick=()=>regenerate(wrap,text);
+    rg.onclick=()=>regenerate(wrap);
     acts.appendChild(rg);
     const dl=document.createElement('button'); dl.className='act-btn del-msg-btn'; dl.textContent='Delete';
     dl.onclick=()=>{
@@ -980,22 +1497,42 @@ function appendGenImg(bub, genImgPrompt){
   gw.appendChild(gl); gw.appendChild(gi); bub.appendChild(gw);
 }
 
-async function regenerate(wrap, lastUserText){
+async function regenerate(wrap){
   if(busy) return;
+
+  const lastUserMsg = [...history].reverse().find(m => m.role === 'user');
+  if(!lastUserMsg){ showToast('No user message found to regenerate','warn'); return; }
+
   wrap.remove();
-  history = history.filter(m=>m.role!=='model'||history.indexOf(m)<history.length-1);
-  const typing=addTyping(); busy=true;
-  document.getElementById('sbtn').disabled=true;
+  const lastModelIdx = [...history].map((m,i)=>({m,i})).reverse().find(({m})=>m.role==='model')?.i;
+  if(lastModelIdx !== undefined) history.splice(lastModelIdx, 1);
+
+  currentController = new AbortController();
+  const signal = currentController.signal;
+  const typing=addTyping();
+  busy=true;
+  setSendBusy(true);
+
   try{
-    const reply=await callAPI(lastUserText,null,null);
+    const reply=await callAPI(lastUserMsg.text, lastUserMsg.b64||null, lastUserMsg.mime||null, signal);
     typing.remove();
     history.push({role:'model',text:reply});
     addBubble('ai',reply);
     saveChatToHistory();
+    showToast('Response regenerated','success',2000);
   }catch(e){
-    typing.remove(); addBubble('ai','Error: '+e.message);
+    typing.remove();
+    if(e.name==='AbortError'){
+      addBubble('ai','⏹ Regeneration stopped by user.',null,null,null,true);
+    } else {
+      addBubble('ai','Error: '+e.message);
+    }
   }finally{
-    busy=false; lastSendTime=Date.now(); startCooldown();
+    busy=false;
+    currentController=null;
+    setSendBusy(false);
+    lastSendTime=Date.now();
+    startCooldown();
   }
 }
 
@@ -1006,11 +1543,21 @@ function addTyping(){
   chat.appendChild(w); chat.scrollTop=chat.scrollHeight; return w;
 }
 
+function escHTML(s){
+  return String(s)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;')
+    .replace(/'/g,'&#39;');
+}
+function esc(s){ return escHTML(s); }
+
 function fmt(t){
-  return t
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-    .replace(/```([\s\S]*?)```/g,'<pre><code>$1</code></pre>')
-    .replace(/`([^`\n]+)`/g,'<code>$1</code>')
+  const escaped = esc(t);
+  return escaped
+    .replace(/```([\s\S]*?)```/g,(_,c)=>'<pre><code>'+esc(c)+'</code></pre>')
+    .replace(/`([^`\n]+)`/g,(_,c)=>'<code>'+esc(c)+'</code>')
     .replace(/^### (.+)$/gm,'<h3>$1</h3>')
     .replace(/^## (.+)$/gm,'<h2>$1</h2>')
     .replace(/^# (.+)$/gm,'<h1>$1</h1>')
@@ -1144,7 +1691,6 @@ function applyTheme(key) {
     document.body.style.background = theme.bg || '';
   }
 
-  // Update ambient mesh
   const mesh = document.getElementById('ambient-mesh');
   if(mesh && theme.accentG) {
     mesh.style.background = `
@@ -1161,13 +1707,38 @@ function applyTheme(key) {
 }
 
 /* ═══════════════════════════════════════════
-   UPDATES + PERSONALIZATION
+   UPDATES  (v0.6 added)
    ═══════════════════════════════════════════ */
 const UPDATES = [
   {
+    version: 'v0.6', title: 'Intelligence & UX Update',
+    date: 'May 11, 2026', time: '08:00 PM IST',
+    current: true,
+    items: [
+      'Tone Selector — 10 professional response tones now live in the Themes menu',
+      'Follow-up Questions — AI suggests 3 contextual next questions after every response',
+      'Input limit removed — the 2000-character cap is gone, send as much as you need',
+      'Incomplete responses fixed — max output tokens raised 4× across all providers',
+      'Tone preference saved — your chosen tone persists across sessions automatically',
+    ]
+  },
+  {
+    version: 'v0.5', title: 'Security & Control Update',
+    date: 'May 7, 2026', time: '12:00 PM IST',
+    current: false,
+    items: [
+      'AbortController — stop AI generation mid-flight with the ⏹ button',
+      'XSS vulnerabilities patched — all user content sanitised before DOM injection',
+      'Content Security Policy headers added to Vercel deployment',
+      'Regenerate button fixed — now correctly resends the last user message',
+      'Export option removed — reduces attack surface and cleans up the UI',
+      'Version badge (v0.5) now visible in the top bar',
+    ]
+  },
+  {
     version: 'v0.4', title: 'Power User Update',
     date: 'May 6, 2026', time: '12:00 PM IST',
-    current: true,
+    current: false,
     items: [
       'AI disclaimer added below the chat input',
       'Pin chats to the top of your history',
@@ -1262,10 +1833,28 @@ function toggleUpdateCard(i) {
   if(chev) chev.style.transform = open ? 'rotate(-90deg)' : 'rotate(0deg)';
 }
 
+/* ═══════════════════════════════════════════
+   PERSONALIZATION  — v0.6: tone + theme
+   ═══════════════════════════════════════════ */
 function renderPersonalization() {
   const el = document.getElementById('menuPersonal');
   if(!el) return;
   el.innerHTML = `
+    <div class="personal-section-label">Response Tone</div>
+    <p class="personal-note">Shape how TanixAI talks to you. Your choice is saved automatically.</p>
+    <div class="tone-grid">
+      ${Object.entries(TONES).map(([key, t]) => `
+        <button class="tone-option${tone===key?' active':''}" onclick="selectTone('${key}');renderPersonalization()">
+          <span class="tone-icon">${t.icon}</span>
+          <div class="tone-info">
+            <span class="tone-name">${t.label}</span>
+            <span class="tone-desc-text">${t.desc}</span>
+          </div>
+          ${tone===key ? '<span class="tone-check">✓</span>' : ''}
+        </button>
+      `).join('')}
+    </div>
+    <div class="personal-tone-divider"></div>
     <div class="personal-section-label">Color Theme</div>
     <p class="personal-note">Choose an accent color for the interface.</p>
     <div class="theme-grid">
