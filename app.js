@@ -1,9 +1,9 @@
 /* ═══════════════════════════════════════════
-   TANIXAI — CINEMATIC UI ENGINE  v0.6
+   TANIXAI — CINEMATIC UI ENGINE  v0.7
    ═══════════════════════════════════════════ */
 
 /* ── CONFIG ── */
-const APP_VERSION = 'v0.6';
+const APP_VERSION = 'v0.7';
 let   currentProvider = 'groq';
 
 /* ── FACTS ── */
@@ -41,6 +41,35 @@ const FACTS = [
 ];
 
 const GEN_TRIGGERS = ['generate','create an image','draw','make an image','imagine','show me an image','picture of','image of','sketch','illustration of','paint me'];
+
+/* ── WELCOME CHIP POOL — 4 random chips shown each load ── */
+const CHIP_POOL = [
+  'Who is Tanish Bane?',
+  'What can you do?',
+  'Explain machine learning simply',
+  'Help me with HSC exam prep',
+  'Generate a sunset over Mumbai',
+  'What is prompt engineering?',
+  'Best free AI courses in 2026',
+  'Write Python code to sort a list',
+  'Compare NM College vs UPG SVKM',
+  'What is the attention mechanism?',
+  'Help me write a college SOP',
+  'Explain gradient descent visually',
+  'How to get a tech job in Mumbai?',
+  'Generate a futuristic cityscape',
+  'What is RAG in AI?',
+  'How does TanixAI work?',
+  'Best way to learn Python from scratch',
+  'What is Tanish planning to study?',
+  'Explain neural networks like I\'m 15',
+  'What jobs does AI create vs destroy?',
+  'Generate a neon-lit cyberpunk street',
+  'Difference between ML and deep learning',
+];
+function getRandomChips(n=4){
+  return [...CHIP_POOL].sort(()=>Math.random()-0.5).slice(0,n);
+}
 
 /* ══════════════════════════════════════════════════════════
    TONES  — v0.6: 10 professional tones with full metadata
@@ -475,15 +504,8 @@ function quickStart(chip){
    WELCOME
    ═══════════════════════════════════════════ */
 function renderWelcome(){
-  const prompts=[
-    'Who is Tanish Bane?',
-    'What can you do?',
-    'Generate a golden sunset over the ocean',
-    'Explain machine learning simply',
-    'Help me with HSC exam prep',
-    'What is prompt engineering?'
-  ];
-  const fact = FACTS[new Date().getDate() % FACTS.length];
+  const prompts=getRandomChips(4);
+  const fact = FACTS[Math.floor(Math.random()*FACTS.length)];
   document.getElementById('chat').innerHTML=`
     <div class="welcome" id="wlc">
       <div class="w-hero">
@@ -1044,8 +1066,10 @@ function showShortcutsPanel(){
 function shouldGenImg(text){
   return GEN_TRIGGERS.some(kw=>text.toLowerCase().includes(kw));
 }
-function buildImgUrl(prompt){
-  return 'https://image.pollinations.ai/prompt/'+encodeURIComponent(prompt)+'?width=512&height=512&nologo=true&seed='+Date.now();
+function buildImgUrl(prompt,seed){
+  const s=seed||Date.now();
+  return 'https://image.pollinations.ai/prompt/'+encodeURIComponent(prompt)
+    +'?model=flux&width=768&height=768&nologo=true&enhance=true&seed='+s;
 }
 
 /* ═══════════════════════════════════════════
@@ -1464,7 +1488,7 @@ async function callGroq(text,signal){
   const res=await fetch('/api/chat',{
     method:'POST',
     headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({provider:'groq',text,history,system:getSystem(),model:'llama-3.1-8b-instant'}),
+    body:JSON.stringify({provider:'groq',text,history,system:getSystem(),model:'llama-3.3-70b-versatile'}),
     signal
   });
   if(!res.ok){const e=await res.json().catch(()=>({}));throw new Error(e.error||'Groq HTTP '+res.status);}
@@ -1478,7 +1502,7 @@ async function callOpenRouter(text,signal){
   const res=await fetch('/api/chat',{
     method:'POST',
     headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({provider:'openrouter',text,history,system:getSystem(),model:'mistralai/mistral-7b-instruct'}),
+    body:JSON.stringify({provider:'openrouter',text,history,system:getSystem(),model:'meta-llama/llama-3.3-70b-instruct:free'}),
     signal
   });
   if(!res.ok){const e=await res.json().catch(()=>({}));throw new Error(e.error||'OpenRouter HTTP '+res.status);}
@@ -1596,13 +1620,54 @@ function addBubble(role,text,imgSrc,pdfName,genImgPrompt,skipTypewriter,textFile
 function appendGenImg(bub, genImgPrompt){
   if(!genImgPrompt) return;
   const gw=document.createElement('div'); gw.className='gen-wrap';
-  const gl=document.createElement('div'); gl.className='gen-lbl'; gl.textContent='generated image';
+  const gl=document.createElement('div'); gl.className='gen-lbl'; gl.textContent='generating image…';
+
+  /* skeleton shimmer shown while loading */
+  const skel=document.createElement('div');
+  skel.className='gen-skeleton';
+  skel.style.cssText='width:100%;aspect-ratio:1/1;max-width:360px;border-radius:10px;background:linear-gradient(90deg,rgba(255,255,255,.04) 25%,rgba(255,255,255,.09) 50%,rgba(255,255,255,.04) 75%);background-size:200% 100%;animation:genShimmer 1.4s ease infinite;';
+
   const gi=document.createElement('img'); gi.alt='generated';
-  gi.src=buildImgUrl(genImgPrompt);
-  gi.style.cssText='opacity:0;transition:opacity .6s ease;';
-  gi.onload=()=>{gi.style.opacity='1';};
-  gi.onerror=()=>{gl.textContent='Image generation failed';};
-  gw.appendChild(gl); gw.appendChild(gi); bub.appendChild(gw);
+  gi.style.cssText='opacity:0;transition:opacity .5s ease;max-width:100%;border-radius:10px;display:block;';
+
+  const seed=Date.now();
+  gi.src=buildImgUrl(genImgPrompt, seed);
+
+  gi.onload=()=>{
+    gl.textContent='generated image';
+    skel.style.display='none';
+    gi.style.opacity='1';
+    /* download button */
+    const dl=document.createElement('a');
+    dl.href=gi.src; dl.download='tanixai-'+seed+'.jpg'; dl.target='_blank';
+    dl.className='gen-dl-btn'; dl.textContent='↓ Save';
+    gw.appendChild(dl);
+  };
+  gi.onerror=()=>{
+    skel.style.display='none';
+    gl.textContent='Image generation failed';
+    /* retry button */
+    const rb=document.createElement('button');
+    rb.className='gen-retry-btn'; rb.textContent='↻ Retry';
+    rb.onclick=()=>{
+      rb.remove(); gl.textContent='generating image…';
+      skel.style.display='';
+      gi.style.opacity='0';
+      gi.src=buildImgUrl(genImgPrompt, Date.now());
+    };
+    gw.appendChild(rb);
+  };
+
+  gw.appendChild(gl); gw.appendChild(skel); gw.appendChild(gi); bub.appendChild(gw);
+
+  /* inject shimmer keyframe once */
+  if(!document.getElementById('gen-shimmer-kf')){
+    const s=document.createElement('style'); s.id='gen-shimmer-kf';
+    s.textContent='@keyframes genShimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}'+
+      '.gen-dl-btn,.gen-retry-btn{display:inline-block;margin-top:8px;padding:5px 12px;font-size:11px;font-family:\'Space Mono\',monospace;border-radius:6px;cursor:pointer;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:var(--accent,#e8a849);text-decoration:none;transition:background .15s;}'+
+      '.gen-dl-btn:hover,.gen-retry-btn:hover{background:rgba(255,255,255,.09);}';
+    document.head.appendChild(s);
+  }
 }
 
 async function regenerate(wrap){
@@ -1819,9 +1884,25 @@ function applyTheme(key) {
    ═══════════════════════════════════════════ */
 const UPDATES = [
   {
+    version: 'v0.7', title: 'Model & Image Quality Update',
+    date: 'May 12, 2026', time: '09:00 PM IST',
+    current: true,
+    items: [
+      'Main model upgraded — Groq now runs llama-3.3-70b-versatile (4× smarter than the old 8b model)',
+      'Reasoning model upgraded — OpenRouter now uses Llama 3.3 70B instruct (free tier)',
+      'max_tokens raised to 4096 — longer, more complete responses with no cut-offs',
+      'Image generation upgraded — now uses Flux model at 768×768 with enhancement on',
+      'Image loading skeleton — shimmer placeholder shown while images generate',
+      'Image retry button — one-click regeneration when an image fails to load',
+      'Save image button — download generated images directly from the chat',
+      'Welcome chips are now dynamic — 4 random prompts from a 22-chip pool every load',
+      'Fact of the day is now randomised — refreshes each time you open TanixAI',
+    ]
+  },
+  {
     version: 'v0.6', title: 'Intelligence & UX Update',
     date: 'May 11, 2026', time: '08:00 PM IST',
-    current: true,
+    current: false,
     items: [
       'Tone Selector — 10 professional response tones now live in the Themes menu',
       'Follow-up Questions — AI suggests 3 contextual next questions after every response',
