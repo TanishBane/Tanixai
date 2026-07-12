@@ -1873,6 +1873,14 @@ function applyTheme(key) {
       var(--void)`;
   }
 
+  // Keep the 3D WebGL background (bg3d.js) in sync with the active color theme.
+  // Guarded because bg3d.js is a deferred module and may not have registered yet.
+  if (typeof window.updateBg3DTheme === 'function') {
+    window.updateBg3DTheme(theme);
+  } else {
+    window.__pendingBg3DTheme = theme;
+  }
+
   localStorage.setItem('tanix_theme', key);
   currentTheme = key;
   const panel = document.getElementById('menuPersonal');

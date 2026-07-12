@@ -58,7 +58,7 @@ module.exports = async function handler(req, res) {
         body: JSON.stringify({
           model: model || 'llama-3.3-70b-versatile',
           messages: [{ role: 'system', content: system }, ...msgs],
-          max_tokens: 4096,
+          max_tokens: 1024,
           temperature: temperature || 0.88
         })
       });
@@ -91,7 +91,7 @@ module.exports = async function handler(req, res) {
           body: JSON.stringify({
             system_instruction: { parts: [{ text: system }] },
             contents,
-            generationConfig: { temperature: 0.88, maxOutputTokens: 4096 }
+            generationConfig: { temperature: 0.88, maxOutputTokens: 1024 }
           })
         }
       );
@@ -116,9 +116,9 @@ module.exports = async function handler(req, res) {
           'HTTP-Referer': 'https://tanixailive.vercel.app'
         },
         body: JSON.stringify({
-          model: model || 'meta-llama/llama-3.3-70b-instruct:free',
+          model: model || 'mistralai/mistral-7b-instruct',
           messages: [{ role: 'system', content: system }, ...msgs],
-          max_tokens: 4096
+          max_tokens: 1024
         })
       });
       if (!orRes.ok) {
