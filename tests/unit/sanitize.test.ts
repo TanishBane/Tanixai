@@ -73,7 +73,7 @@ describe("Input Validation & Payload Sanitization", () => {
     const invalidRole = {
       messages: [
         {
-          role: "admin", // not user | assistant | system
+          role: "admin", // not user | assistant
           content: "Hello",
         },
       ],

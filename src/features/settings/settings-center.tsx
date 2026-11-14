@@ -6,7 +6,7 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { ArrowLeft, Check, ChevronDown, Command, Download, RotateCcw, Search, Settings2, Trash2, X } from "lucide-react";
 import { APP_VERSION } from "@/lib/app-info";
 import { AVAILABLE_MODELS } from "@/lib/ai/models";
-import { TONES } from "@/lib/ai/prompts";
+import { TONES } from "@/lib/ai/tones";
 import { ATMOSPHERE_ENGINES, CURATED_COLOR_THEMES, type GradientStyle } from "@/lib/types/theme";
 import { getMotionTransition } from "@/lib/motion/presets";
 import { KEYBOARD_SHORTCUTS } from "./keyboard-shortcuts";

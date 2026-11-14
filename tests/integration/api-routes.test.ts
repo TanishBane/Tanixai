@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
+import { streamText } from "ai";
 import { GET as getHealth } from "@/app/api/health/route";
 import { POST as postImage } from "@/app/api/image/route";
 import { POST as postFollowups } from "@/app/api/followups/route";
@@ -226,6 +227,30 @@ describe("API Route Handlers Integration & Resilience Specifications", () => {
 
       const bodyText = await res.text();
       expect(bodyText).toContain('0:"Test response token"');
+    });
+
+    it.each([
+      ["ask", "MASTER BEHAVIOURAL PROMPT"],
+      ["plan", "PERSONAL STRATEGY, GOAL DESIGN, CAREER ROADMAPS & EXECUTION PLANNING"],
+      ["build", "RADIANCE BUILD MODE"],
+    ] as const)("sends the full %s system prompt to the model", async (mode, promptMarker) => {
+      const req = new NextRequest("http://localhost:3000/api/chat", {
+        method: "POST",
+        body: JSON.stringify({
+          messages: [{ role: "user", content: `Use ${mode} mode` }],
+          modelId: "groq-fast",
+          mode,
+          language: "en",
+        }),
+        headers: { "Content-Type": "application/json" },
+      });
+
+      const response = await postChat(req);
+      expect(response.status).toBe(200);
+
+      const systemPrompt = vi.mocked(streamText).mock.calls.at(-1)?.[0].system;
+      expect(systemPrompt).toContain(`[Mode Instruction - ${mode.toUpperCase()}]`);
+      expect(systemPrompt).toContain(promptMarker);
     });
   });
 });

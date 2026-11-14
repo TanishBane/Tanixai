@@ -21,19 +21,32 @@ describe("system prompt response preferences", () => {
     expect(prompt).toContain("consistent with system and safety instructions");
   });
 
-  it("defaults to Ask and gives each composer mode a distinct response contract", () => {
+  it("uses the complete mode-specific prompt and defaults to Ask", () => {
     const ask = composeSystemPrompt();
     const plan = composeSystemPrompt("default", "en", "plan");
     const build = composeSystemPrompt("default", "en", "build");
 
     expect(ask).toContain("[Mode Instruction - ASK]");
-    expect(ask).toContain("Answer the user's request directly");
+    expect(ask).toContain("MASTER BEHAVIOURAL PROMPT");
+    expect(ask).toContain("20. ASK MODE COMPLETION STANDARD");
     expect(plan).toContain("[Mode Instruction - PLAN]");
-    expect(plan).toContain("prioritized sequence of practical phases");
-    expect(plan).toContain("success criteria");
+    expect(plan).toContain("PERSONAL STRATEGY, GOAL DESIGN, CAREER ROADMAPS & EXECUTION PLANNING");
+    expect(plan).toContain("END OF RADIANCE PLAN MODE INSTRUCTIONS");
     expect(build).toContain("[Mode Instruction - BUILD]");
-    expect(build).toContain("complete the requested deliverable");
-    expect(build).toContain("verification");
+    expect(build).toContain("RADIANCE BUILD MODE");
+    expect(build).toContain("19. FINAL BEHAVIOURAL STANDARD");
     expect(plan).not.toBe(build);
+    expect(ask).not.toContain("END OF RADIANCE PLAN MODE INSTRUCTIONS");
+    expect(plan).not.toContain("RADIANCE BUILD MODE");
+    expect(build).not.toContain("MASTER BEHAVIOURAL PROMPT");
+  });
+
+  it("falls back to Ask for an unknown mode and keeps shared controls", () => {
+    const prompt = composeSystemPrompt("concise", "ja", "unexpected-mode", "Prefer examples.");
+
+    expect(prompt).toContain("[Mode Instruction - ASK]");
+    expect(prompt).toContain("MASTER BEHAVIOURAL PROMPT");
+    expect(prompt).toContain("Always respond in Japanese.");
+    expect(prompt).toContain("Prefer examples.");
   });
 });

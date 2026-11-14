@@ -64,3 +64,15 @@
   - `next lint`: Exit code 0 (0 warnings, 0 errors).
   - `vitest run`: Exit code 0 (9/9 unit tests passing across format, circuit breaker, and storage).
   - `next build`: Exit code 0 (Compiled 7 static pages and 3 dynamic route handlers).
+
+### 2026-11-15 — Install complete mode-specific AI prompts
+
+- Added the supplied Ask, Plan, and Build prompt documents as versioned static JSON resources under `src/lib/ai/system-prompts/`; source text was compared against each embedded prompt after line-ending normalization.
+- Replaced the short mode hints with an exhaustive typed mode registry and a shared resolver. Each request receives only its selected mode prompt, with Ask as the default and invalid values falling back to Ask.
+- Kept Radiance identity, selected response language, tone, and subordinate custom instructions in the composed system prompt.
+- Tightened chat request validation to reject client-provided `system` messages, so only server-owned prompt configuration can establish system instructions.
+- Added unit and API integration coverage for all three modes, prompt routing, Ask fallback, language/tone/custom-instruction preservation, and rejection of client system messages.
+
+Verification: 42 focused unit/integration tests passed; `pnpm.cmd typecheck`, `pnpm.cmd lint`, and `pnpm.cmd build` passed.
+- Final production-bundle inspection confirmed that the full mode prompt text is not shipped in browser JavaScript; the settings tone catalog is isolated from server prompt data.
+- The full suite reported 596/598 passing tests (65/67 files). The two failures are existing unrelated assertions: the dynamic-theme pool expects 29 entries but has 24, and a settings test expects a stale “Response language” label. The prompt/API focused suites pass.

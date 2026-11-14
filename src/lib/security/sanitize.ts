@@ -16,7 +16,7 @@ export const ChatRequestSchema = z.object({
     .array(
       z.object({
         id: z.string().optional(),
-        role: z.enum(["user", "assistant", "system"]),
+        role: z.enum(["user", "assistant"]),
         content: z.string().max(32000, "Message content exceeds maximum allowed length"),
         attachments: z
           .array(

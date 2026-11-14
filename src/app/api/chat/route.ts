@@ -120,7 +120,7 @@ export async function POST(req: NextRequest) {
     }
 
     return {
-      role: m.role as "user" | "assistant" | "system",
+      role: m.role,
       content: textContent,
     };
   });
